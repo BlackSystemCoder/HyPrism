@@ -69,25 +69,59 @@ jobs:
           # Move only the .app bundle to dmg-contents
           mv build/bin/HyPrism.app dmg-contents/
           
-          # Create a helper script to remove quarantine
-          cat > dmg-contents/Remove-Quarantine.command << 'HELPER'
+          # Create a helper script to remove quarantine from Applications
+          cat > dmg-contents/Fix-HyPrism.command << 'HELPER'
           #!/bin/bash
-          cd "$(dirname "$0")"
+          clear
           echo ""
-          echo "=== HyPrism Quarantine Remover ==="
+          echo "╔══════════════════════════════════════════════════════╗"
+          echo "║       HyPrism - Fix macOS Security Warning           ║"
+          echo "╚══════════════════════════════════════════════════════╝"
           echo ""
-          echo "Removing quarantine attribute from HyPrism.app..."
-          xattr -cr HyPrism.app
+          
+          # Check common locations for HyPrism.app
+          APP_PATH=""
+          if [ -d "/Applications/HyPrism.app" ]; then
+              APP_PATH="/Applications/HyPrism.app"
+          elif [ -d "$HOME/Applications/HyPrism.app" ]; then
+              APP_PATH="$HOME/Applications/HyPrism.app"
+          elif [ -d "$(dirname "$0")/HyPrism.app" ]; then
+              APP_PATH="$(dirname "$0")/HyPrism.app"
+          fi
+          
+          if [ -z "$APP_PATH" ]; then
+              echo "❌ HyPrism.app not found!"
+              echo ""
+              echo "Please drag HyPrism.app to your Applications folder first,"
+              echo "then run this script again."
+              echo ""
+              echo "Or run manually in Terminal:"
+              echo "  xattr -cr /path/to/HyPrism.app"
+              echo ""
+              read -p "Press Enter to close..."
+              exit 1
+          fi
+          
+          echo "Found HyPrism at: $APP_PATH"
           echo ""
-          echo "✅ Done! You can now open HyPrism normally."
+          echo "Removing quarantine attribute..."
+          xattr -cr "$APP_PATH"
+          
+          if [ $? -eq 0 ]; then
+              echo ""
+              echo "✅ Success! HyPrism is now ready to use."
+              echo ""
+              echo "You can now open HyPrism from your Applications folder."
+          else
+              echo ""
+              echo "❌ Failed to remove quarantine. Try running manually:"
+              echo "  sudo xattr -cr \"$APP_PATH\""
+          fi
+          
           echo ""
-          echo "If the app is in /Applications, run instead:"
-          echo "  xattr -cr /Applications/HyPrism.app"
-          echo ""
-          echo "Press any key to close..."
-          read -n 1
+          read -p "Press Enter to close..."
           HELPER
-          chmod +x dmg-contents/Remove-Quarantine.command
+          chmod +x dmg-contents/Fix-HyPrism.command
           
           # Create DMG from clean directory
           create-dmg \
@@ -98,7 +132,7 @@ jobs:
             --icon "HyPrism.app" 175 120 \
             --hide-extension "HyPrism.app" \
             --app-drop-link 525 120 \
-            --icon "Remove-Quarantine.command" 350 280 \
+            --icon "Fix-HyPrism.command" 350 280 \
             "HyPrism-macOS-arm64.dmg" \
             "dmg-contents"
           
