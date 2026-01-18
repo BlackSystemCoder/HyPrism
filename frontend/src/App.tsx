@@ -217,11 +217,12 @@ const App: React.FC = () => {
       setDownloaded(data.downloaded);
       setTotal(data.total);
       
-      if (data.progress >= 100 && data.stage === 'launch') {
+      // When launch stage is received, game is starting
+      if (data.stage === 'launch') {
         setIsGameRunning(true);
         setIsDownloading(false);
+        setProgress(0);
       }
-      // Don't reset on 'complete' - backend will send 'launch' next even if already installed
     });
 
     const unsubUpdate = EventsOn('update:available', (asset: any) => {
@@ -281,13 +282,9 @@ const App: React.FC = () => {
     setIsDownloading(true);
     try {
       await DownloadAndLaunch(username);
-      // If we get here without error and haven't set running state, something went wrong
-      // Reset after a short delay to allow events to process
-      setTimeout(() => {
-        if (!isGameRunning) {
-          setIsDownloading(false);
-        }
-      }, 2000);
+      // Button state will be managed by progress events:
+      // - 'launch' event sets isGameRunning=true and isDownloading=false
+      // - 'error' event sets isDownloading=false
     } catch (err) {
       console.error('Launch failed:', err);
       setIsDownloading(false);
