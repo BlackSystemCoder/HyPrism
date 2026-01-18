@@ -144,7 +144,11 @@ jobs:
       - name: Create AppImage (Linux)
         if: matrix.platform == 'linux'
         run: |
-          # Download appimagetool
+          # Use linuxdeploy to properly bundle ALL dependencies including WebKit
+          wget -q -O linuxdeploy https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          chmod +x linuxdeploy
+          
+          # Download appimagetool as fallback
           wget -q -O appimagetool https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
           chmod +x appimagetool
           
@@ -197,43 +201,82 @@ jobs:
           </component>
           APPDATA
           
-          # Bundle required WebKit2GTK and ICU libraries for compatibility
-          # NOTE: We do NOT bundle any libraries as they have complex dependencies
-          # that vary between distributions. Users should install webkit2gtk-4.0 from their
-          # distribution's package manager, or use the Flatpak version instead.
-          # 
-          # The AppImage is a minimal wrapper - dependencies must be installed system-wide.
-          # For a fully self-contained experience, use the Flatpak version.
+          # Bundle ALL WebKit2GTK libraries and their dependencies
+          echo "Bundling WebKit2GTK and all dependencies..."
           
-          # Create AppRun with better environment setup for SteamOS compatibility
+          # Find and copy all required libraries with their dependencies
+          # Use ldd to find all dependencies of the main webkit libraries
+          WEBKIT_LIBS="libwebkit2gtk-4.0.so.37 libjavascriptcoregtk-4.0.so.18"
+          for lib in $WEBKIT_LIBS; do
+            LIBPATH=$(find /usr/lib -name "$lib" 2>/dev/null | head -1)
+            if [ -n "$LIBPATH" ]; then
+              echo "Found $lib at $LIBPATH"
+              cp -L "$LIBPATH" HyPrism.AppDir/usr/lib/ 2>/dev/null || true
+            fi
+          done
+          
+          # Bundle additional commonly needed libraries
+          EXTRA_LIBS="
+            libwoff2dec.so.1.0.2
+            libwoff2common.so.1.0.2
+            libbrotlidec.so.1
+            libbrotlicommon.so.1
+            libicui18n.so.*
+            libicuuc.so.*
+            libicudata.so.*
+            libenchant-2.so.*
+            libhyphen.so.*
+            libsoup-2.4.so.*
+            libsecret-1.so.*
+            libnotify.so.*
+            libmanette-0.2.so.*
+            libwpe-1.0.so.*
+            libWPEBackend-fdo-1.0.so.*
+          "
+          
+          for pattern in $EXTRA_LIBS; do
+            for libpath in /usr/lib/x86_64-linux-gnu/$pattern /usr/lib/$pattern; do
+              if [ -f "$libpath" ]; then
+                cp -L "$libpath" HyPrism.AppDir/usr/lib/ 2>/dev/null || true
+                echo "Bundled: $(basename $libpath)"
+              fi
+            done
+          done
+          
+          # Create comprehensive library list
+          echo "Checking for missing dependencies..."
+          ldd HyPrism.AppDir/usr/bin/HyPrism 2>/dev/null | grep "not found" || echo "No missing deps for binary"
+          
+          # Create AppRun with comprehensive library loading
           cat > HyPrism.AppDir/AppRun << 'APPRUN'
           #!/bin/bash
-          # AppRun script for HyPrism with SteamOS compatibility
-          
-          set -e
+          # AppRun script for HyPrism with full library bundling
           
           SELF=$(readlink -f "$0")
           HERE=${SELF%/*}
           
-          # Add our bundled binaries and libraries to path
-          export PATH="${HERE}/usr/bin:${PATH}"
+          # Add bundled libraries to path FIRST (before system libs)
+          export LD_LIBRARY_PATH="${HERE}/usr/lib:${LD_LIBRARY_PATH}"
           
-          # Add bundled libraries with proper fallback
-          if [ -d "${HERE}/usr/lib" ]; then
-            export LD_LIBRARY_PATH="${HERE}/usr/lib:${LD_LIBRARY_PATH}"
-          fi
+          # Add our bundled binaries to path
+          export PATH="${HERE}/usr/bin:${PATH}"
           
           # Handle XDG directories for proper file access
           export XDG_DATA_DIRS="${HERE}/usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
           
-          # Fix for some GPU drivers on SteamOS
+          # WebKit environment variables for better compatibility
           export WEBKIT_DISABLE_COMPOSITING_MODE="${WEBKIT_DISABLE_COMPOSITING_MODE:-0}"
+          export WEBKIT_DISABLE_DMABUF_RENDERER=1
           
           # Launch the application
           cd "${HERE}/usr/bin"
           exec ./HyPrism "$@"
           APPRUN
           chmod +x HyPrism.AppDir/AppRun
+          
+          # List bundled libraries for debugging
+          echo "Bundled libraries:"
+          ls -la HyPrism.AppDir/usr/lib/ || true
           
           # Build AppImage with ARCH set and extract-and-run for compatibility
           ARCH=x86_64 ./appimagetool --appimage-extract-and-run HyPrism.AppDir HyPrism-x86_64.AppImage

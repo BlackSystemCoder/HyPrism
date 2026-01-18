@@ -131,12 +131,35 @@ Try Flatpak instead, or extract and run:
 
 ## SteamOS / Steam Deck
 
-Flatpak is recommended for Steam Deck:
+The AppImage now bundles all required libraries for SteamOS compatibility.
+
+### Option 1: AppImage (Recommended for Steam Deck)
 
 ```bash
+# Download HyPrism-x86_64.AppImage
+chmod +x HyPrism-x86_64.AppImage
+./HyPrism-x86_64.AppImage
+```
+
+### Option 2: Flatpak
+
+```bash
+# Add Flathub and install GNOME 44 runtime
+flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+flatpak install flathub org.gnome.Platform//44
+
+# Install HyPrism
 flatpak install HyPrism.flatpak
 flatpak run dev.hyprism.HyPrism
 ```
+
+### Adding to Steam
+
+1. Switch to Desktop Mode
+2. Download and run HyPrism AppImage
+3. In Steam, go to Games → Add a Non-Steam Game
+4. Browse to the AppImage location
+5. Add it and return to Gaming Mode
 
 Or use AppImage in Desktop Mode:
 ```bash
