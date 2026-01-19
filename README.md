@@ -1,5 +1,10 @@
 # HyPrism
+
+[![Downloads](https://img.shields.io/github/downloads/yyyumeniku/HyPrism/total?style=for-the-badge&logo=github&label=Downloads&color=FFA845)](https://github.com/yyyumeniku/HyPrism/releases)
+[![Website](https://img.shields.io/badge/Website-hyprism-FFA845?style=for-the-badge&logo=firefox)](https://yyyumeniku.github.io/hyprism-site/)
+
 A multiplatform Hytale launcher with mod manager and more!
+
 <img width="3084" height="1964" alt="Screenshot 2026-01-17 at 22 29 55@2x" src="https://github.com/user-attachments/assets/0a27bc91-d6d5-4148-ae3b-f9e6c36cd6db" />
 
 ## Security Notice
